@@ -1,7 +1,10 @@
 pipeline {
 
+    // No ejecutamos todo en un único nodo,
+    // cada stage define su propio agente
     agent none
 
+    // Variable global para AWS
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
     }
@@ -16,30 +19,46 @@ pipeline {
             }
         }
 
-       stage('Static Test') {
-        agent { label 'agente-analisis' }
+        stage('Static Test') {
+            // Se ejecuta en el agente dedicado al análisis estático
+            agent { label 'agente-analisis' }
 
-        steps {
-        sh '''
-        python3 -m venv venv
-        . venv/bin/activate
+            steps {
+                sh '''
+                echo "=== STATIC TEST ==="
+                whoami
+                hostname
+                echo "==================="
 
-        pip install --upgrade pip
-        pip install flake8 bandit
+                # Crear entorno virtual aislado
+                python3 -m venv venv
+                . venv/bin/activate
 
-        echo "Running Flake8..."
-        flake8 src --exclude=venv
+                # Instalar herramientas de análisis
+                pip install --upgrade pip
+                pip install flake8 bandit
 
-        echo "Running Bandit..."
-        bandit -r src -x venv
-        '''
-    }
-}
+                # Análisis de calidad de código
+                echo "Running Flake8..."
+                flake8 src --exclude=venv
 
-       stage('Deploy Staging') {
+                # Análisis de seguridad
+                echo "Running Bandit..."
+                bandit -r src -x venv
+                '''
+            }
+        }
+
+        stage('Deploy Staging') {
+            // Despliegue automático del stack en entorno staging
             agent any
             steps {
                 sh '''
+                echo "=== DEPLOY STAGING ==="
+                whoami
+                hostname
+                echo "======================"
+
                 aws s3 mb s3://staging-todo-list-artifacts-622005079080 --region us-east-1 || true
 
                 sam build
@@ -53,63 +72,82 @@ pipeline {
                     --no-confirm-changeset \
                     --no-fail-on-empty-changeset
 
-
-               aws cloudformation describe-stacks \
-                  --stack-name staging-todo-list-aws \
-                  --region us-east-1 \
-                  --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
-
                 aws cloudformation describe-stacks \
                   --stack-name staging-todo-list-aws \
                   --region us-east-1 \
-                  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+                  --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
                   --output text > api_url.txt
                 '''
+
                 stash includes: 'api_url.txt', name: 'stagingUrl'
             }
         }
 
+        stage('Rest Test Staging') {
 
-       stage('Rest Test Staging') {
-    agent { label 'agente-rest' }
+            // Pruebas funcionales contra el entorno staging
+            agent { label 'agente-rest' }
 
-    steps {
-        unstash 'stagingUrl'
-
-        sh '''
-        python3 -m venv venv
-        . venv/bin/activate
-
-        pip install --upgrade pip
-        pip install pytest requests
-
-        BASE_URL=$(cat api_url.txt)
-        export BASE_URL=$BASE_URL
-
-        echo "Testing against: $BASE_URL"
-
-        pytest test/integration/todoApiTest.py -v
-        '''
-    }
-}
-
-        stage('Promote to Master') {
-            agent any
             steps {
+                unstash 'stagingUrl'
+
                 sh '''
-                git config user.email "ci@jenkins.local"
-                git config user.name "Jenkins CI"
-                git checkout master
-                git merge develop
-                git push origin master
+                echo "=== REST TEST STAGING ==="
+                whoami
+                hostname
+                echo "========================="
+
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install pytest requests
+
+                BASE_URL=$(cat api_url.txt)
+                export BASE_URL=$BASE_URL
+                echo "Testing against: $BASE_URL"
+
+                pytest test/integration/todoApiTest.py -v
                 '''
             }
         }
 
+        stage('Promote to Master') {
+            // Si staging pasa correctamente, se promociona a master
+            agent any
+
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-token',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    sh '''
+                    echo "=== PROMOTE TO MASTER ==="
+                    whoami
+                    hostname
+                    echo "========================="
+
+                    git config user.email "ci@jenkins.local"
+                    git config user.name "Jenkins CI"
+                    git checkout master
+                    git pull origin master
+                    git merge develop
+                    git push https://$GIT_USER:$GIT_PASS@github.com/jlcesardev/ResCP-1.4.git master
+                    '''
+                }
+            }
+        }
+
         stage('Deploy Production') {
+            // Despliegue del stack en producción
             agent any
             steps {
                 sh '''
+                echo "=== DEPLOY PRODUCTION ==="
+                whoami
+                hostname
+                echo "=========================="
+
                 aws s3 mb s3://production-todo-list-artifacts-622005079080 --region us-east-1 || true
 
                 sam build
@@ -126,26 +164,40 @@ pipeline {
                 aws cloudformation describe-stacks \
                   --stack-name production-todo-list-aws \
                   --region us-east-1 \
-                  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+                  --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
                   --output text > api_url.txt
+
+                echo "Captured URL:"
+                cat api_url.txt
                 '''
+
                 stash includes: 'api_url.txt', name: 'productionUrl'
             }
         }
 
         stage('Rest Test Production') {
+            // Pruebas en producción limitadas a operaciones de solo lectura
             agent { label 'agente-rest' }
 
             steps {
                 unstash 'productionUrl'
 
                 sh '''
+                echo "=== REST TEST PRODUCTION ==="
+                whoami
+                hostname
+                echo "============================"
+
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install pytest requests
+
                 BASE_URL=$(cat api_url.txt)
                 export BASE_URL=$BASE_URL
 
                 echo "Testing production (read-only)..."
 
-                venv/bin/pytest test/integration/todoApiTest.py -k "get or list" -v
+                pytest test/integration/todoApiTest.py -k "get or list" -v
                 '''
             }
         }
