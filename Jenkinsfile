@@ -36,23 +36,32 @@ pipeline {
     }
 }
 
-	stage('Deploy') {
-	    steps {
-            script {
 
-            	def appBranch = env.BRANCH_NAME ?: "master"
-	        def configEnv = (appBranch == "master") ? "production" : "staging"
+stage('Deploy') {
+    steps {
+        script {
 
-        	   echo "Deploying with config-env: ${configEnv}"
-	
-			sh """
-			    sam build
-			"""
-			sh "sam deploy --template-file .aws-sam/build/template.yaml --config-file samconfig.toml"
+            // Extraer el nombre del stack desde samconfig
+            def stackName = sh(
+                script: "grep stack_name samconfig.toml | cut -d '\"' -f2",
+                returnStdout: true
+            ).trim()
 
+            echo "Deploying stack: ${stackName}"
+
+            sh """
+                sam build
+                sam deploy \
+                  --template-file .aws-sam/build/template.yaml \
+                  --stack-name ${stackName} \
+                  --capabilities CAPABILITY_IAM \
+                  --region us-east-1 \
+                  --no-confirm-changeset
+            """
         }
     }
 }
+
 
 
 
