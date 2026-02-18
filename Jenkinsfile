@@ -47,7 +47,8 @@ stage('Deploy') {
 
             sh """
                 sam build
-                sam deploy --config-env ${configEnv}
+		sam deploy --config-file samconfig.toml --config-env ${configEnv}
+
             """
         }
     }
