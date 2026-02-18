@@ -60,6 +60,7 @@ stage('Deploy') {
 		      --region us-east-1 \
 		      --resolve-s3 \
 		      --no-confirm-changeset
+		      --no-fail-on-empty-changeset
 		"""
 	   }
     }
