@@ -8,14 +8,17 @@ pipeline {
     stages {
 
         stage('Static Test') {
-            steps {
-                sh '''
-                pip install flake8 bandit
-                flake8 src || true
-                bandit -r src || true
-                '''
-            }
-        }
+        steps {
+            sh '''
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install flake8 bandit
+            flake8 src || true
+            bandit -r src || true
+            '''
+    }
+}
+
 
         stage('Deploy') {
             steps {
@@ -27,13 +30,15 @@ pipeline {
         }
 
         stage('Rest Test') {
-            steps {
-                sh '''
-                pip install pytest requests
-                pytest
-                '''
-            }
+        steps {
+            sh '''
+            . venv/bin/activate
+            pip install pytest requests
+            pytest
+            '''
         }
+    }
+
 
         stage('Promote') {
             steps {
