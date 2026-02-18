@@ -1,10 +1,9 @@
 pipeline {
-
     // No ejecutamos todo en un único nodo,
     // cada stage define su propio agente
     agent none
 
-    // Variable global para AWS
+     // Variable global para AWS
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
     }
@@ -12,146 +11,149 @@ pipeline {
     stages {
 
         stage('Get Code') {
-            // Descarga del código desde la rama develop
             agent any
             steps {
                 git branch: 'develop',
-                    url: 'https://github.com/jlcesardev/ResCP-1.4.git'
+                   url: 'https://github.com/jlcesardev/ResCP-1.4.git'
             }
         }
 
-        stage('Static Test') {
-            // Se ejecuta en el agente dedicado al análisis estático
-            agent { label 'agente-analisis' }
+       stage('Static Test') {
+         // Se ejecuta en el agente dedicado al análisis estático
+        agent { label 'agente-analisis' }
 
-            steps {
-                sh '''
-                # Crear entorno virtual aislado
-                python3 -m venv venv
-                . venv/bin/activate
+        steps {
+        sh '''
+         # Crear entorno virtual aislado
+        python3 -m venv venv
+        . venv/bin/activate
 
-                # Instalar herramientas de análisis
-                pip install --upgrade pip
-                pip install flake8 bandit
+         # Instalar herramientas de análisis
+        pip install --upgrade pip
+        pip install flake8 bandit
 
-                # Análisis de calidad de código
-                flake8 src --exclude=venv
+         # Análisis de calidad de código
+        echo "Running Flake8..."
+        flake8 src --exclude=venv
 
-                # Análisis de seguridad
-                bandit -r src -x venv
-                '''
-            }
-        }
+         # Análisis de seguridad
+        echo "Running Bandit..."
+        bandit -r src -x venv
+        '''
+    }
+}
 
-        stage('Deploy Staging') {
+       stage('Deploy Staging') {
             // Despliegue automático del stack en entorno staging
             agent any
             steps {
                 sh '''
-                 # Crear bucket producción si no existe
-                aws s3 mb s3://production-todo-list-artifacts-622005079080 --region us-east-1 || true
-
-                # Construcción de la aplicación serverless
+                 # Construcción de la aplicación serverless
+                aws s3 mb s3://staging-todo-list-artifacts-622005079080 --region us-east-1 || true
+                 
                 sam build
-
-                # Despliegue en AWS (entorno staging)
-                sam deploy \
+                 # Despliegue en AWS (entorno staging) 
+                   sam deploy \
                     --stack-name staging-todo-list-aws \
+                    --s3-bucket staging-todo-list-artifacts-622005079080 \
                     --capabilities CAPABILITY_IAM \
                     --region us-east-1 \
                     --parameter-overrides Stage=staging \
                     --no-confirm-changeset \
                     --no-fail-on-empty-changeset
 
-                # Obtener la URL base del API desplegado
-                aws cloudformation describe-stacks \
+                 # Obtener la URL base del API desplegado
+               aws cloudformation describe-stacks \
                   --stack-name staging-todo-list-aws \
                   --region us-east-1 \
                   --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
                   --output text > api_url.txt
                 '''
 
-                // Compartimos la URL con otros agentes
+                 // Compartimos la URL con otros agentes
                 stash includes: 'api_url.txt', name: 'stagingUrl'
             }
         }
 
-        stage('Rest Test Staging') {
-            // Pruebas funcionales contra el entorno staging
-            agent { label 'agente-rest' }
 
-            steps {
-                unstash 'stagingUrl'
+       stage('Rest Test Staging') {
+         
+        // Pruebas funcionales contra el entorno staging
+       agent { label 'agente-rest' }
 
+        steps {
+            unstash 'stagingUrl'
                 sh '''
-                # Crear entorno para pruebas
-                python3 -m venv venv
-                . venv/bin/activate
+                     # Crear entorno para pruebas
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install pytest requests
 
-                pip install --upgrade pip
-                pip install pytest requests
+                     # Exportar URL para que la usen los tests
+                    BASE_URL=$(cat api_url.txt)
+                    export BASE_URL=$BASE_URL
+                    echo "Testing against: $BASE_URL"
 
-                # Exportar URL para que la usen los tests
-                BASE_URL=$(cat api_url.txt)
-                export BASE_URL=$BASE_URL
-
-                # Ejecutar pruebas de integración
-                pytest test/integration/todoApiTest.py -v
-                '''
-            }
-        }
-
-        stage('Promote to Master') {
-            // Si staging pasa correctamente, se promociona a master
-            agent any
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-token',
-                    usernameVariable: 'GIT_USER',
-                    passwordVariable: 'GIT_PASS'
-                )]) {
-                    sh '''
-                    git config user.email "ci@jenkins.local"
-                    git config user.name "Jenkins CI"
-
-                    git checkout master
-                    git pull origin master
-                    git merge develop
-
-                    git push https://$GIT_USER:$GIT_PASS@github.com/jlcesardev/ResCP-1.4.git master
+                     # Ejecutar pruebas de integración
+                    pytest test/integration/todoApiTest.py -v
                     '''
                 }
             }
-        }
 
+            stage('Promote to Master') {
+            // Si staging pasa correctamente, se promociona a master
+                agent any
+                    steps {
+                        withCredentials([usernamePassword(
+                        credentialsId: 'github-token',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                        )]) {
+                        sh '''
+                            git config user.email "ci@jenkins.local"
+                            git config user.name "Jenkins CI"
+                            git checkout master
+                            git pull origin master
+                           git merge develop
+                            git push https://$GIT_USER:$GIT_PASS@github.com/jlcesardev/ResCP-1.4.git master
+                        '''
+        }
+    }
+}
         stage('Deploy Production') {
-            // Despliegue del stack en producción
+             // Despliegue del stack en producción
             agent any
             steps {
                 sh '''
+                aws s3 mb s3://production-todo-list-artifacts-622005079080 --region us-east-1 || true
+
                 sam build
 
                 sam deploy \
                     --stack-name production-todo-list-aws \
+                    --s3-bucket production-todo-list-artifacts-622005079080 \
                     --capabilities CAPABILITY_IAM \
                     --region us-east-1 \
                     --parameter-overrides Stage=production \
                     --no-confirm-changeset \
                     --no-fail-on-empty-changeset
 
-                aws cloudformation describe-stacks \
-                  --stack-name production-todo-list-aws \
-                  --region us-east-1 \
-                  --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
-                  --output text > api_url.txt
-                '''
+               aws cloudformation describe-stacks \
+              --stack-name staging-todo-list-aws \
+              --region us-east-1 \
+              --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
+              --output text > api_url.txt
+                echo "Captured URL:"
+                cat api_url.txt
 
+                '''
                 stash includes: 'api_url.txt', name: 'productionUrl'
             }
         }
 
         stage('Rest Test Production') {
-            // Pruebas en producción limitadas a operaciones de solo lectura
+             // Pruebas en producción limitadas a operaciones de solo lectura
             agent { label 'agente-rest' }
 
             steps {
@@ -161,7 +163,9 @@ pipeline {
                 BASE_URL=$(cat api_url.txt)
                 export BASE_URL=$BASE_URL
 
-                # Solo pruebas GET y LIST para no modificar datos
+                echo "Testing production (read-only)..."
+
+                 # Solo pruebas GET y LIST para no modificar datos
                 venv/bin/pytest test/integration/todoApiTest.py -k "get or list" -v
                 '''
             }
