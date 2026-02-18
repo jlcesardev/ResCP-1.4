@@ -26,8 +26,7 @@ pipeline {
 
             // Clonar repo de configuración según entorno
             sh """
-		sh """
- 		   rm -rf config
+		   rm -rf config
 		   git clone -b ${configBranch} https://github.com/jlcesardev/todo-list-aws-config.git config
 		   cp config/samconfig.toml .
 		   echo "samconfig.toml descargado:"
