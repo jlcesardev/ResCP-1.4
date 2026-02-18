@@ -50,21 +50,38 @@ stage('Deploy') {
             echo "Deploying stack: ${stackName}"
 
 		sh """
-    sam build
-"""
-sh """
-    sam deploy \
-      --template-file .aws-sam/build/template.yaml \
-      --stack-name ${stackName} \
-      --capabilities CAPABILITY_IAM \
-      --region us-east-1 \
-      --resolve-s3 \
-      --no-confirm-changeset
-"""
-		
+		    sam build
+		"""
+		sh """
+		    sam deploy \
+		      --template-file .aws-sam/build/template.yaml \
+		      --stack-name ${stackName} \
+		      --capabilities CAPABILITY_IAM \
+		      --region us-east-1 \
+		      --resolve-s3 \
+		      --no-confirm-changeset
+		"""
+	   }
+    }
+}
 
+	stage('Rest Test') {
+	    steps {
+        sh '''
+        echo "Setting BASE_URL production..."
 
-        }
+        BASE_URL="https://ky2falsixf.execute-api.us-east-1.amazonaws.com/Prod"
+        export BASE_URL=$BASE_URL
+
+        echo "BASE_URL: $BASE_URL"
+
+        python3 -m venv venv
+        . venv/bin/activate
+        pip install --upgrade pip
+        pip install pytest requests
+
+        pytest test/integration/todoApiTest.py -k "get or list" -v
+        '''
     }
 }
 
@@ -72,22 +89,7 @@ sh """
 
 
 
-
-      stage('Rest Test') {
-            steps {
-                sh '''
-                echo "Setting BASE_URL production..."
-
-                BASE_URL="https://t7smiakg40.execute-api.us-east-1.amazonaws.com/Prod"
-                export BASE_URL=$BASE_URL
-
-                echo "BASE_URL: $BASE_URL"
-
-                # Ejecutar SOLO tests de lectura
-                venv/bin/pytest test/integration/todoApiTest.py -k "get or list" -v
-                '''
-            }
-        }
+    }
 
     }
 }
