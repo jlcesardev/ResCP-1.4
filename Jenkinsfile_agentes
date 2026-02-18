@@ -55,10 +55,10 @@ pipeline {
                     --no-confirm-changeset \
                     --no-fail-on-empty-changeset
 
-                aws cloudformation describe-stacks \
+               aws cloudformation describe-stacks \
                   --stack-name staging-todo-list-aws \
                   --region us-east-1 \
-                  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+                  --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
                   --output text > api_url.txt
                 '''
                 stash includes: 'api_url.txt', name: 'stagingUrl'
