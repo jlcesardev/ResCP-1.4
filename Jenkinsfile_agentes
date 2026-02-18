@@ -16,23 +16,27 @@ pipeline {
         }
 
         stage('Static Test') {
-    agent { label 'agente-analisis' }
+        agent { label 'agente-analisis' }
 
-    steps {
+        steps {
         sh '''
-        echo "Installing analysis tools..."
+        echo "Creating virtual environment..."
 
-        python3 -m pip install --upgrade pip
-        python3 -m pip install flake8 bandit
+        python3 -m venv venv
+        . venv/bin/activate
+
+        pip install --upgrade pip
+        pip install flake8 bandit
 
         echo "Running Flake8..."
-        python3 -m flake8 .
+        flake8 .
 
         echo "Running Bandit..."
-        python3 -m bandit -r .
+        bandit -r .
         '''
     }
 }
+
 
 
         stage('Deploy Staging') {
@@ -69,7 +73,10 @@ pipeline {
         unstash 'stagingUrl'
 
         sh '''
+        python3 -m venv venv
         python3 -m pip install pytest requests
+        . venv/bin/activate
+        pip install pytest requests
 
         BASE_URL=$(cat api_url.txt)
         export BASE_URL=$BASE_URL
