@@ -45,11 +45,16 @@ stage('Deploy') {
 
             echo "Deploying with config-env: ${configEnv}"
 
-            sh """
-                sam build
-		sam deploy --config-file samconfig.toml --config-env ${configEnv}
+            sh '''
+		    sam build
+		    sam deploy \
+		      --template-file .aws-sam/build/template.yaml \
+		      --config-file samconfig.toml \
+		      --config-env ${configEnv}
 
-            """
+
+
+           '''
         }
     }
 }
