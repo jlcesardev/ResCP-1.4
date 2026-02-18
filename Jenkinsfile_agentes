@@ -88,13 +88,20 @@ pipeline {
             agent any
             steps {
                 sh '''
-                git config user.email "ci@jenkins.local"
-                git config user.name "Jenkins CI"
+               withCredentials([usernamePassword(
+                credentialsId: 'github-token',
+                usernameVariable: 'GIT_USER',
+                passwordVariable: 'GIT_PASS'
+                    )]) {
+                sh '''
+                    git config user.email "ci@jenkins.local"
+                    git config user.name "Jenkins CI"
                 git checkout master
                 git merge develop
-                git push origin master
+                git push https://${GIT_USER}:${GIT_PASS}@github.com/jlcesardev/ResCP-1.4.git master
                 '''
-            }
+                }
+              }
         }
 
         stage('Deploy Production') {
