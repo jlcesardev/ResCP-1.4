@@ -84,25 +84,25 @@ pipeline {
     }
 }
 
-        stage('Promote to Master') {
-            agent any
-            steps {
-                sh '''
-               withCredentials([usernamePassword(
-                credentialsId: 'github-token',
-                usernameVariable: 'GIT_USER',
-                passwordVariable: 'GIT_PASS'
-                    )]) {
-                sh '''
-                    git config user.email "ci@jenkins.local"
-                    git config user.name "Jenkins CI"
-                git checkout master
-                git merge develop
-                git push https://${GIT_USER}:${GIT_PASS}@github.com/jlcesardev/ResCP-1.4.git master
-                '''
-                }
-              }
+       stage('Promote to Master') {
+    agent any
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'github-token',
+            usernameVariable: 'GIT_USER',
+            passwordVariable: 'GIT_PASS'
+        )]) {
+            sh '''
+            git config user.email "ci@jenkins.local"
+            git config user.name "Jenkins CI"
+            git checkout master
+            git merge develop
+            git push https://$GIT_USER:$GIT_PASS@github.com/jlcesardev/ResCP-1.4.git master
+            '''
         }
+    }
+}
+
 
         stage('Deploy Production') {
             agent any
