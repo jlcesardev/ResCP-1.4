@@ -82,14 +82,7 @@ stage('Deploy') {
 
         pytest test/integration/todoApiTest.py -k "get or list" -v
         '''
-    }
-}
-
-
-
-
-
-    }
-
-    }
+    	}
+	}
+   }
 }
