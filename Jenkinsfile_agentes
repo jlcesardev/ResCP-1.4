@@ -1,4 +1,8 @@
 pipeline {
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
     agent none
 
     environment {
@@ -11,7 +15,7 @@ pipeline {
             agent any
             steps {
                 git branch: 'develop',
-                    url: 'https://github.com/jlcesardev/ResCP-1.4.git'
+                   url: 'https://github.com/jlcesardev/ResCP-1.4.git'
             }
         }
 
@@ -37,6 +41,20 @@ pipeline {
 
 
 
+=======
+        stage('Static Test') {
+            agent { label 'agente-analisis' }
+            steps {
+                sh '''
+                echo "Running Flake8..."
+                flake8 .
+
+                echo "Running Bandit..."
+                bandit -r .
+                '''
+            }
+        }
+>>>>>>> develop
 
         stage('Deploy Staging') {
             agent any
@@ -55,15 +73,23 @@ pipeline {
                     --no-confirm-changeset \
                     --no-fail-on-empty-changeset
 
+
                aws cloudformation describe-stacks \
                   --stack-name staging-todo-list-aws \
                   --region us-east-1 \
                   --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
+=======
+                aws cloudformation describe-stacks \
+                  --stack-name staging-todo-list-aws \
+                  --region us-east-1 \
+                  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+>>>>>>> develop
                   --output text > api_url.txt
                 '''
                 stash includes: 'api_url.txt', name: 'stagingUrl'
             }
         }
+
 
        stage('Rest Test Staging') {
     agent { label 'agente-rest' }
@@ -89,6 +115,24 @@ pipeline {
 }
 
 
+=======
+        stage('Rest Test Staging') {
+            agent { label 'agente-rest' }
+
+            steps {
+                unstash 'stagingUrl'
+
+                sh '''
+                BASE_URL=$(cat api_url.txt)
+                export BASE_URL=$BASE_URL
+
+                echo "Testing against: $BASE_URL"
+
+                venv/bin/pytest test/integration/todoApiTest.py -v
+                '''
+            }
+        }
+>>>>>>> develop
 
         stage('Promote to Master') {
             agent any
