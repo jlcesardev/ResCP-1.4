@@ -43,19 +43,22 @@ pipeline {
 }
 
        stage('Rest Test') {
-       steps {
+    steps {
         sh '''
-        echo "Activating virtual environment..."
-        . venv/bin/activate
+        BASE_URL=$(aws cloudformation describe-stacks \
+          --stack-name staging-todo-list-aws \
+          --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
+          --output text)
 
-        echo "Installing test dependencies..."
-        pip install pytest requests
+        echo "BASE_URL: $BASE_URL"
 
-        echo "Running integration tests..."
-        pytest test/integration -v --maxfail=1 --disable-warnings
+        export BASE_URL=$BASE_URL
+
+        venv/bin/pytest test/integration/todoApiTest.py -v
         '''
     }
 }
+
 
 
 
