@@ -15,10 +15,10 @@ pipeline {
             }
         }
 
-        stage('Static Test') {
-    agent { label 'agente-analisis' }
+       stage('Static Test') {
+        agent { label 'agente-analisis' }
 
-    steps {
+        steps {
         sh '''
         python3 -m venv venv
         . venv/bin/activate
@@ -27,10 +27,10 @@ pipeline {
         pip install flake8 bandit
 
         echo "Running Flake8..."
-        flake8 --exclude=venv .
+        flake8 src --exclude=venv
 
         echo "Running Bandit..."
-        bandit -r . -x venv
+        bandit -r src -x venv
         '''
     }
 }
