@@ -42,15 +42,22 @@ pipeline {
     }
 }
 
-        stage('Rest Test') {
-        steps {
-            sh '''
-            . venv/bin/activate
-            pip install pytest requests
-            pytest
-            '''
+       stage('Rest Test') {
+            steps {
+                sh '''
+                BASE_URL=$(aws cloudformation describe-stacks \
+                  --stack-name staging-todo-list-aws \
+                  --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
+                  --output text)
+
+                echo "BASE_URL: $BASE_URL"
+
+                export BASE_URL=$BASE_URL
+
+                venv/bin/pytest test/integration/todoApiTest.py
+                '''
+            }
         }
-    }
 
 
         stage('Promote') {
