@@ -21,13 +21,26 @@ pipeline {
 
 
         stage('Deploy') {
-            steps {
-                sh '''
-                sam build
-                sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
-                '''
-            }
-        }
+        steps {
+        sh '''
+        # Crear bucket si no existe (no falla si ya existe)
+        aws s3 mb s3://staging-todo-list-artifacts-622005079080 --region us-east-1 || true
+
+        # Build SAM
+        sam build
+
+        # Deploy SAM no interactivo
+        sam deploy \
+            --stack-name staging-todo-list-aws \
+            --s3-bucket staging-todo-list-artifacts-622005079080 \
+            --capabilities CAPABILITY_IAM \
+            --region us-east-1 \
+            --parameter-overrides Stage=staging \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+        '''
+    }
+}
 
         stage('Rest Test') {
         steps {
