@@ -26,35 +26,35 @@ pipeline {
 
             // Clonar repo de configuración según entorno
             sh """
-                git clone -b ${configBranch} https://github.com/jlcesardev/todo-list-aws-config.git config
-                cp config/samconfig.toml .
-                echo "samconfig.toml descargado:"
-                cat samconfig.toml
+		sh """
+ 		   rm -rf config
+		   git clone -b ${configBranch} https://github.com/jlcesardev/todo-list-aws-config.git config
+		   cp config/samconfig.toml .
+		   echo "samconfig.toml descargado:"
+		   cat samconfig.toml
+	        """
+        }
+    }
+}
+
+stage('Deploy') {
+    steps {
+        script {
+
+            def appBranch = env.BRANCH_NAME ?: "master"
+            def configEnv = (appBranch == "master") ? "prod" : "staging"
+
+            echo "Deploying with config-env: ${configEnv}"
+
+            sh """
+                sam build
+                sam deploy --config-env ${configEnv}
             """
         }
     }
 }
 
 
-        stage('Deploy') {
-            steps {
-                sh '''
-                # Crear bucket producción si no existe
-                aws s3 mb s3://production-todo-list-artifacts-622005079080 --region us-east-1 || true
-
-                sam build
-
-                sam deploy \
-                    --stack-name production-todo-list-aws \
-                    --s3-bucket production-todo-list-artifacts-622005079080 \
-                    --capabilities CAPABILITY_IAM \
-                    --region us-east-1 \
-                    --parameter-overrides Stage=production \
-                    --no-confirm-changeset \
-                    --no-fail-on-empty-changeset
-                '''
-            }
-        }
 
         stage('Rest Test') {
             steps {
