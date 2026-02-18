@@ -45,11 +45,11 @@ pipeline {
 
         	   echo "Deploying with config-env: ${configEnv}"
 	
-        	    sh """
-                	sam build
-	            """
+			sh """
+			    sam build
+			"""
+			sh "sam deploy --template-file .aws-sam/build/template.yaml --config-file samconfig.toml"
 
-        	    sh "sam deploy --template-file .aws-sam/build/template.yaml --config-file samconfig.toml --config-env ${configEnv}"
         }
     }
 }
