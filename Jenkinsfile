@@ -66,24 +66,23 @@ stage('Deploy') {
     }
 }
 
-	stage('Rest Test') {
+		stage('Rest Test') {
 	    steps {
         sh '''
-        echo "Setting BASE_URL production..."
-
-        BASE_URL="https://ky2falsixf.execute-api.us-east-1.amazonaws.com/Prod"
-        export BASE_URL=$BASE_URL
-
-        echo "BASE_URL: $BASE_URL"
-
         python3 -m venv venv
         . venv/bin/activate
         pip install --upgrade pip
         pip install pytest requests
 
+        BASE_URL="https://ky2falsixf.execute-api.us-east-1.amazonaws.com/Prod"
+        export BASE_URL=$BASE_URL
+
         pytest test/integration/todoApiTest.py -k "get or list" -v
         '''
-    	}
-	}
+    }
+}
+
+
+
    }
 }
