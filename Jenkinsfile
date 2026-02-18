@@ -68,14 +68,17 @@ pipeline {
             git config user.email "ci@jenkins.local"
             git config user.name "Jenkins CI"
 
+            git fetch origin
+
             git checkout master
-            git merge develop
+            git merge origin/develop
 
             git push https://${GIT_USER}:${GIT_PASS}@github.com/jlcesardev/ResCP-1.4.git master
             '''
         }
     }
 }
+
 
 
     }
