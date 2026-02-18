@@ -49,15 +49,21 @@ stage('Deploy') {
 
             echo "Deploying stack: ${stackName}"
 
-            sh """
-                sam build
-                sam deploy \
-                  --template-file .aws-sam/build/template.yaml \
-                  --stack-name ${stackName} \
-                  --capabilities CAPABILITY_IAM \
-                  --region us-east-1 \
-                  --no-confirm-changeset
-            """
+		sh """
+    sam build
+"""
+sh """
+    sam deploy \
+      --template-file .aws-sam/build/template.yaml \
+      --stack-name ${stackName} \
+      --capabilities CAPABILITY_IAM \
+      --region us-east-1 \
+      --resolve-s3 \
+      --no-confirm-changeset
+"""
+		
+
+
         }
     }
 }
