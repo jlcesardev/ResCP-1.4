@@ -45,19 +45,18 @@ pipeline {
        stage('Rest Test') {
     steps {
         sh '''
-        BASE_URL="https://t7smiakg40.execute-api.us-east-1.amazonaws.com/staging"
-          --stack-name staging-todo-list-aws \
-          --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
-          --output text)
+        echo "Setting BASE_URL..."
+
+        BASE_URL="https://t7smiakg40.execute-api.us-east-1.amazonaws.com/Prod"
+        export BASE_URL=$BASE_URL
 
         echo "BASE_URL: $BASE_URL"
-
-        export BASE_URL=$BASE_URL
 
         venv/bin/pytest test/integration/todoApiTest.py -v
         '''
     }
 }
+
 
 
 
