@@ -43,7 +43,7 @@ pipeline {
 }
 
        stage('Rest Test') {
-    steps {
+       steps {
         sh '''
         echo "Activating virtual environment..."
         . venv/bin/activate
@@ -51,11 +51,12 @@ pipeline {
         echo "Installing test dependencies..."
         pip install pytest requests
 
-        echo "Running pytest..."
-        pytest tests/ -v --maxfail=1 --disable-warnings
+        echo "Running integration tests..."
+        pytest test/integration -v --maxfail=1 --disable-warnings
         '''
     }
 }
+
 
 
         stage('Promote') {
