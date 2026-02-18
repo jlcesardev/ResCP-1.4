@@ -66,44 +66,42 @@ pipeline {
 
 
        stage('Rest Test Staging') {
-    agent { label 'agente-rest' }
+       agent { label 'agente-rest' }
 
-    steps {
-        unstash 'stagingUrl'
+        steps {
+            unstash 'stagingUrl'
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install pytest requests
+                    BASE_URL=$(cat api_url.txt)
+                    export BASE_URL=$BASE_URL
+                    echo "Testing against: $BASE_URL"
+                    pytest test/integration/todoApiTest.py -v
+                    '''
+                }
+            }
 
-        sh '''
-        python3 -m venv venv
-        . venv/bin/activate
-        pip install --upgrade pip
-        pip install pytest requests
-        BASE_URL=$(cat api_url.txt)
-        export BASE_URL=$BASE_URL
-        echo "Testing against: $BASE_URL"
-        pytest test/integration/todoApiTest.py -v
-        '''
-    }
-}
-
-       stage('Promote to Master') {
-    agent any
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'github-token',
-            usernameVariable: 'GIT_USER',
-            passwordVariable: 'GIT_PASS'
-        )]) {
-            sh '''
-            git config user.email "ci@jenkins.local"
-            git config user.name "Jenkins CI"
-            git checkout master
-            git merge develop
-            git push https://$GIT_USER:$GIT_PASS@github.com/jlcesardev/ResCP-1.4.git master
-            '''
+            stage('Promote to Master') {
+                agent any
+                    steps {
+                        withCredentials([usernamePassword(
+                        credentialsId: 'github-token',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                        )]) {
+                        sh '''
+                            git config user.email "ci@jenkins.local"
+                            git config user.name "Jenkins CI"
+                            git checkout master
+                            git pull origin master
+                           git merge develop
+                            git push https://$GIT_USER:$GIT_PASS@github.com/jlcesardev/ResCP-1.4.git master
+                        '''
         }
     }
 }
-
-
         stage('Deploy Production') {
             agent any
             steps {
