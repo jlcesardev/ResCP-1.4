@@ -36,12 +36,11 @@ pipeline {
     }
 }
 
-
-stage('Deploy') {
-    steps {
+	stage('Deploy') {
+	    steps {
         script {
 
-            // Extraer el nombre del stack desde samconfig
+            // Extraer el stack_name desde el samconfig externo
             def stackName = sh(
                 script: "grep stack_name samconfig.toml | cut -d '\"' -f2",
                 returnStdout: true
@@ -49,24 +48,15 @@ stage('Deploy') {
 
             echo "Deploying stack: ${stackName}"
 
-		sh """
-		    sam build
-		"""
-		sh """
-		    sam deploy \
-		      --template-file .aws-sam/build/template.yaml \
-		      --stack-name ${stackName} \
-		      --capabilities CAPABILITY_IAM \
-		      --region us-east-1 \
-		      --resolve-s3 \
-		      --no-confirm-changeset
-		      --no-fail-on-empty-changeset
-		"""
-	   }
+            sh """
+                sam build
+                sam deploy --template-file .aws-sam/build/template.yaml --stack-name ${stackName} --capabilities CAPABILITY_IAM --region us-east-1 --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset
+            """
+        }
     }
 }
 
-		stage('Rest Test') {
+	stage('Rest Test') {
 	    steps {
         sh '''
         python3 -m venv venv
