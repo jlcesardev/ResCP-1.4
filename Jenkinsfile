@@ -57,22 +57,26 @@ pipeline {
     }
 }
 
+    stage('Promote') {
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'github-token',
+            usernameVariable: 'GIT_USER',
+            passwordVariable: 'GIT_PASS'
+        )]) {
+            sh '''
+            git config user.email "ci@jenkins.local"
+            git config user.name "Jenkins CI"
 
+            git checkout master
+            git merge develop
 
-
-
-        stage('Promote') {
-            steps {
-                withCredentials([string(credentialsId: 'github-token', variable: 'GIT_TOKEN')]) {
-                    sh '''
-                    git config user.email "ci@jenkins.local"
-                    git config user.name "Jenkins CI"
-                    git checkout master
-                    git merge develop
-                    git push https://${GIT_TOKEN}@github.com/TU_USUARIO/todo-list-aws.git master
-                    '''
-                }
-            }
+            git push https://${GIT_USER}:${GIT_PASS}@github.com/jlcesardev/ResCP-1.4.git master
+            '''
         }
+    }
+}
+
+
     }
 }
