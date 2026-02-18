@@ -58,11 +58,6 @@ pipeline {
                   --stack-name staging-todo-list-aws \
                   --region us-east-1 \
                   --query "Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue" \
-
-                aws cloudformation describe-stacks \
-                  --stack-name staging-todo-list-aws \
-                  --region us-east-1 \
-                  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
                   --output text > api_url.txt
                 '''
                 stash includes: 'api_url.txt', name: 'stagingUrl'
