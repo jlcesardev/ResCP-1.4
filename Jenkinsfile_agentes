@@ -1,0 +1,132 @@
+pipeline {
+    agent none
+
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+    }
+
+    stages {
+
+        stage('Get Code') {
+            agent any
+            steps {
+                git branch: 'develop',
+                    url: 'https://github.com/jlcesardev/ResCP-1.4.git'
+            }
+        }
+
+        stage('Static Test') {
+            agent { label 'agente-analisis' }
+            steps {
+                sh '''
+                echo "Running Flake8..."
+                flake8 .
+
+                echo "Running Bandit..."
+                bandit -r .
+                '''
+            }
+        }
+
+        stage('Deploy Staging') {
+            agent any
+            steps {
+                sh '''
+                aws s3 mb s3://staging-todo-list-artifacts-622005079080 --region us-east-1 || true
+
+                sam build
+
+                sam deploy \
+                    --stack-name staging-todo-list-aws \
+                    --s3-bucket staging-todo-list-artifacts-622005079080 \
+                    --capabilities CAPABILITY_IAM \
+                    --region us-east-1 \
+                    --parameter-overrides Stage=staging \
+                    --no-confirm-changeset \
+                    --no-fail-on-empty-changeset
+
+                aws cloudformation describe-stacks \
+                  --stack-name staging-todo-list-aws \
+                  --region us-east-1 \
+                  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+                  --output text > api_url.txt
+                '''
+                stash includes: 'api_url.txt', name: 'stagingUrl'
+            }
+        }
+
+        stage('Rest Test Staging') {
+            agent { label 'agente-rest' }
+
+            steps {
+                unstash 'stagingUrl'
+
+                sh '''
+                BASE_URL=$(cat api_url.txt)
+                export BASE_URL=$BASE_URL
+
+                echo "Testing against: $BASE_URL"
+
+                venv/bin/pytest test/integration/todoApiTest.py -v
+                '''
+            }
+        }
+
+        stage('Promote to Master') {
+            agent any
+            steps {
+                sh '''
+                git config user.email "ci@jenkins.local"
+                git config user.name "Jenkins CI"
+                git checkout master
+                git merge develop
+                git push origin master
+                '''
+            }
+        }
+
+        stage('Deploy Production') {
+            agent any
+            steps {
+                sh '''
+                aws s3 mb s3://production-todo-list-artifacts-622005079080 --region us-east-1 || true
+
+                sam build
+
+                sam deploy \
+                    --stack-name production-todo-list-aws \
+                    --s3-bucket production-todo-list-artifacts-622005079080 \
+                    --capabilities CAPABILITY_IAM \
+                    --region us-east-1 \
+                    --parameter-overrides Stage=production \
+                    --no-confirm-changeset \
+                    --no-fail-on-empty-changeset
+
+                aws cloudformation describe-stacks \
+                  --stack-name production-todo-list-aws \
+                  --region us-east-1 \
+                  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+                  --output text > api_url.txt
+                '''
+                stash includes: 'api_url.txt', name: 'productionUrl'
+            }
+        }
+
+        stage('Rest Test Production') {
+            agent { label 'agente-rest' }
+
+            steps {
+                unstash 'productionUrl'
+
+                sh '''
+                BASE_URL=$(cat api_url.txt)
+                export BASE_URL=$BASE_URL
+
+                echo "Testing production (read-only)..."
+
+                venv/bin/pytest test/integration/todoApiTest.py -k "get or list" -v
+                '''
+            }
+        }
+    }
+}
