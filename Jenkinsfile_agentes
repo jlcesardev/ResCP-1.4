@@ -48,6 +48,9 @@ pipeline {
             agent any
             steps {
                 sh '''
+                 # Crear bucket producción si no existe
+                aws s3 mb s3://production-todo-list-artifacts-622005079080 --region us-east-1 || true
+
                 # Construcción de la aplicación serverless
                 sam build
 
