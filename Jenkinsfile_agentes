@@ -16,12 +16,10 @@ pipeline {
         }
 
         stage('Static Test') {
-        agent { label 'agente-analisis' }
+    agent { label 'agente-analisis' }
 
-        steps {
+    steps {
         sh '''
-        echo "Creating virtual environment..."
-
         python3 -m venv venv
         . venv/bin/activate
 
@@ -29,13 +27,14 @@ pipeline {
         pip install flake8 bandit
 
         echo "Running Flake8..."
-        flake8 .
+        flake8 --exclude=venv .
 
         echo "Running Bandit..."
-        bandit -r .
+        bandit -r . -x venv
         '''
     }
 }
+
 
 
 
