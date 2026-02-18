@@ -41,7 +41,7 @@ stage('Deploy') {
         script {
 
             def appBranch = env.BRANCH_NAME ?: "master"
-            def configEnv = (appBranch == "master") ? "prod" : "staging"
+	    def configEnv = (appBranch == "master") ? "production" : "staging"
 
             echo "Deploying with config-env: ${configEnv}"
 
