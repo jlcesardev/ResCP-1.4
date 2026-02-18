@@ -65,7 +65,7 @@ pipeline {
             }
         }
 
-        stage('Rest Test Staging') {
+       stage('Rest Test Staging') {
     agent { label 'agente-rest' }
 
     steps {
@@ -73,17 +73,21 @@ pipeline {
 
         sh '''
         python3 -m venv venv
-        python3 -m pip install pytest requests
         . venv/bin/activate
+
+        pip install --upgrade pip
         pip install pytest requests
 
         BASE_URL=$(cat api_url.txt)
         export BASE_URL=$BASE_URL
 
+        echo "Testing against: $BASE_URL"
+
         pytest test/integration/todoApiTest.py -v
         '''
     }
 }
+
 
 
         stage('Promote to Master') {
