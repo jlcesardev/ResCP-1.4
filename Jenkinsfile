@@ -36,32 +36,29 @@ pipeline {
     }
 }
 
-stage('Deploy') {
-    steps {
-        script {
+	stage('Deploy') {
+	    steps {
+            script {
 
-            def appBranch = env.BRANCH_NAME ?: "master"
-	    def configEnv = (appBranch == "master") ? "production" : "staging"
+            	def appBranch = env.BRANCH_NAME ?: "master"
+	        def configEnv = (appBranch == "master") ? "production" : "staging"
 
-            echo "Deploying with config-env: ${configEnv}"
+        	   echo "Deploying with config-env: ${configEnv}"
+	
+        	    sh """
+                	sam build
+	            """
 
-            sh '''
-		    sam build
-		    sam deploy \
-		      --template-file .aws-sam/build/template.yaml \
-		      --config-file samconfig.toml \
-		      --config-env ${configEnv}
-
-
-
-           '''
+        	    sh "sam deploy --template-file .aws-sam/build/template.yaml --config-file samconfig.toml --config-env ${configEnv}"
         }
     }
 }
 
 
 
-        stage('Rest Test') {
+
+
+      stage('Rest Test') {
             steps {
                 sh '''
                 echo "Setting BASE_URL production..."
