@@ -7,12 +7,34 @@ pipeline {
 
     stages {
 
+
         stage('Get Code') {
-            steps {
-                git branch: 'master',
-                    url: 'https://github.com/jlcesardev/ResCP-1.4.git'
-            }
+         agent any
+         steps {
+         script {
+
+            // Detectar rama que dispara el pipeline
+            def appBranch = env.BRANCH_NAME ?: "master"
+            def configBranch = (appBranch == "master") ? "production" : "staging"
+
+            echo "Application branch: ${appBranch}"
+            echo "Config branch: ${configBranch}"
+
+            // Clonar aplicación
+            git branch: appBranch,
+                url: 'https://github.com/jlcesardev/ResCP-1.4.git'
+
+            // Clonar repo de configuración según entorno
+            sh """
+                git clone -b ${configBranch} https://github.com/jlcesardev/todo-list-aws-config.git config
+                cp config/samconfig.toml .
+                echo "samconfig.toml descargado:"
+                cat samconfig.toml
+            """
         }
+    }
+}
+
 
         stage('Deploy') {
             steps {
