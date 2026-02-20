@@ -29,14 +29,17 @@ pipeline {
 
             def appBranch = env.BRANCH_NAME
             def configBranch = (appBranch == "master") ? "production" : "staging"
+            def stackName = (appBranch == "master") ? "production-todo-list-aws" : "staging-todo-list-aws"
 
             echo "Application branch: ${appBranch}"
             echo "Deploying using config: ${configBranch}"
+            echo "Stack name: ${stackName}"
 
             sh """
                 sam build
                 sam deploy \
                   --template-file .aws-sam/build/template.yaml \
+                  --stack-name ${stackName} \
                   --config-file samconfig.toml \
                   --config-env ${configBranch} \
                   --no-confirm-changeset \
@@ -46,6 +49,7 @@ pipeline {
     }
 }
 
+		
 		
 		stage('Rest Test') {
     	steps {
