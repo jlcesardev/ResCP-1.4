@@ -7,48 +7,72 @@ pipeline {
 
     stages {
 
+
         stage('Get Code') {
-            steps {
-                git branch: 'master',
-                    url: 'https://github.com/jlcesardev/ResCP-1.4.git'
-            }
+         agent any
+         steps {
+         script {
+
+            // Detectar rama que dispara el pipeline
+            def appBranch = env.BRANCH_NAME ?: "master"
+            def configBranch = (appBranch == "master") ? "production" : "staging"
+
+            echo "Application branch: ${appBranch}"
+            echo "Config branch: ${configBranch}"
+
+            // Clonar aplicación
+            git branch: appBranch,
+                url: 'https://github.com/jlcesardev/ResCP-1.4.git'
+
+            // Clonar repo de configuración según entorno
+            sh """
+		   rm -rf config
+		   git clone -b ${configBranch} https://github.com/jlcesardev/todo-list-aws-config.git config
+		   cp config/samconfig.toml .
+		   echo "samconfig.toml descargado:"
+		   cat samconfig.toml
+	        """
         }
-
-        stage('Deploy') {
-            steps {
-                sh '''
-                # Crear bucket producción si no existe
-                aws s3 mb s3://production-todo-list-artifacts-622005079080 --region us-east-1 || true
-
-                sam build
-
-                sam deploy \
-                    --stack-name production-todo-list-aws \
-                    --s3-bucket production-todo-list-artifacts-622005079080 \
-                    --capabilities CAPABILITY_IAM \
-                    --region us-east-1 \
-                    --parameter-overrides Stage=production \
-                    --no-confirm-changeset \
-                    --no-fail-on-empty-changeset
-                '''
-            }
-        }
-
-        stage('Rest Test') {
-            steps {
-                sh '''
-                echo "Setting BASE_URL production..."
-
-                BASE_URL="https://t7smiakg40.execute-api.us-east-1.amazonaws.com/Prod"
-                export BASE_URL=$BASE_URL
-
-                echo "BASE_URL: $BASE_URL"
-
-                # Ejecutar SOLO tests de lectura
-                venv/bin/pytest test/integration/todoApiTest.py -k "get or list" -v
-                '''
-            }
-        }
-
     }
+}
+
+	stage('Deploy') {
+	    steps {
+        script {
+
+            // Extraer el stack_name desde el samconfig externo
+            def stackName = sh(
+                script: "grep stack_name samconfig.toml | cut -d '\"' -f2",
+                returnStdout: true
+            ).trim()
+
+            echo "Deploying stack: ${stackName}"
+
+            sh """
+                sam build
+                sam deploy --template-file .aws-sam/build/template.yaml --stack-name ${stackName} --capabilities CAPABILITY_IAM --region us-east-1 --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset
+            """
+        }
+    }
+}
+
+	stage('Rest Test') {
+	    steps {
+        sh '''
+        python3 -m venv venv
+        . venv/bin/activate
+        pip install --upgrade pip
+        pip install pytest requests
+
+        BASE_URL="https://ky2falsixf.execute-api.us-east-1.amazonaws.com/Prod"
+        export BASE_URL=$BASE_URL
+
+        pytest test/integration/todoApiTest.py -k "get or list" -v
+        '''
+    }
+}
+
+
+
+   }
 }
