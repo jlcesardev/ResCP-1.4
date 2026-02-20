@@ -17,7 +17,7 @@ pipeline {
                     echo "Application branch: ${appBranch}"
                     echo "Config branch: ${configBranch}"
 
-                    ...
+                
                 }
             }
         }
