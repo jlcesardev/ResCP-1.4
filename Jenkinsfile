@@ -37,20 +37,19 @@ pipeline {
 }
 
 	stage('Deploy') {
-	    steps {
+    steps {
         script {
 
-            // Extraer el stack_name desde el samconfig externo
-            def stackName = sh(
-                script: "grep stack_name samconfig.toml | cut -d '\"' -f2",
-                returnStdout: true
-            ).trim()
-
-            echo "Deploying stack: ${stackName}"
+            echo "Deploying using environment: ${configBranch}"
 
             sh """
                 sam build
-                sam deploy --template-file .aws-sam/build/template.yaml --stack-name ${stackName} --capabilities CAPABILITY_IAM --region us-east-1 --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset
+                sam deploy \
+                  --template-file .aws-sam/build/template.yaml \
+                  --config-file samconfig.toml \
+                  --config-env ${configBranch} \
+                  --no-confirm-changeset \
+                  --no-fail-on-empty-changeset
             """
         }
     }
