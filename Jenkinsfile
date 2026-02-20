@@ -56,10 +56,12 @@ pipeline {
     	steps {
         script {
 
-            def baseUrl = (configBranch == "production") ?
-                "https://ky2falsixf.execute-api.us-east-1.amazonaws.com/Prod" :
-                "https://TU_URL_STAGING.execute-api.us-east-1.amazonaws.com/Prod"
+           def baseUrl = sh(
+    script: "aws cloudformation describe-stacks --stack-name ${stackName} --query \"Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue\" --output text",
+    returnStdout: true
+).trim()
 
+echo "Base URL detected: ${baseUrl}"
 	
 echo "Base URL detected: ${baseUrl}"
 
