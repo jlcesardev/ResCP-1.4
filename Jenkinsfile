@@ -22,7 +22,8 @@ pipeline {
             }
         }
 
-       stage('Deploy') {
+
+		stage('Deploy') {
     steps {
         script {
 
@@ -44,8 +45,10 @@ pipeline {
         }
     }
 }
+
+		
 		stage('Rest Test') {
-    steps {
+    	steps {
         script {
 
             def baseUrl = (configBranch == "production") ?
