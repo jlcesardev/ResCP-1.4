@@ -22,25 +22,28 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
-            steps {
-                script {
+       stage('Deploy') {
+    steps {
+        script {
 
-                    echo "Deploying using environment: ${configBranch}"
+            def appBranch = env.BRANCH_NAME
+            def configBranch = (appBranch == "master") ? "production" : "staging"
 
-                    sh """
-                        sam build
-                        sam deploy \
-                          --template-file .aws-sam/build/template.yaml \
-                          --config-file samconfig.toml \
-                          --config-env ${configBranch} \
-                          --no-confirm-changeset \
-                          --no-fail-on-empty-changeset
-                    """
-                }
-            }
+            echo "Application branch: ${appBranch}"
+            echo "Deploying using config: ${configBranch}"
+
+            sh """
+                sam build
+                sam deploy \
+                  --template-file .aws-sam/build/template.yaml \
+                  --config-file samconfig.toml \
+                  --config-env ${configBranch} \
+                  --no-confirm-changeset \
+                  --no-fail-on-empty-changeset
+            """
         }
-		
+    }
+}
 		stage('Rest Test') {
     steps {
         script {
