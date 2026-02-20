@@ -35,16 +35,17 @@ pipeline {
             echo "Deploying using config: ${configBranch}"
             echo "Stack name: ${stackName}"
 
-            sh """
-                sam build
-                sam deploy \
-                  --template-file .aws-sam/build/template.yaml \
-                  --stack-name ${stackName} \
-                  --config-file samconfig.toml \
-                  --config-env ${configBranch} \
-                  --no-confirm-changeset \
-                  --no-fail-on-empty-changeset
-            """
+           sh """
+    		sam build
+    		sam deploy \
+      		--template-file .aws-sam/build/template.yaml \
+      		--stack-name ${stackName} \
+      		--capabilities CAPABILITY_IAM \
+      		--region us-east-1 \
+      		--resolve-s3 \
+      		--no-confirm-changeset \
+      		--no-fail-on-empty-changeset
+			"""
         }
     }
 }
