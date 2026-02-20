@@ -60,16 +60,15 @@ pipeline {
                 "https://ky2falsixf.execute-api.us-east-1.amazonaws.com/Prod" :
                 "https://TU_URL_STAGING.execute-api.us-east-1.amazonaws.com/Prod"
 
-            sh """
-                python3 -m venv venv
-                . venv/bin/activate
-                pip install --upgrade pip
-                pip install pytest requests
+	
+echo "Base URL detected: ${baseUrl}"
 
-                export BASE_URL=${baseUrl}
+sh """
+    export BASE_URL=${baseUrl}
+    pytest test/integration/todoApiTest.py -k "get or list" -v
+"""
 
-                pytest test/integration/todoApiTest.py -k "get or list" -v
-            """
+			
         }
 		}
 	}
