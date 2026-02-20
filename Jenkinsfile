@@ -50,30 +50,36 @@ pipeline {
     }
 }
 
-		
-		
 		stage('Rest Test') {
-    	steps {
+    steps {
         script {
 
-           def baseUrl = sh(
-    script: "aws cloudformation describe-stacks --stack-name ${stackName} --query \"Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue\" --output text",
-    returnStdout: true
-).trim()
+            def appBranch = env.BRANCH_NAME
+            def stackName = (appBranch == "master") ?
+                "production-todo-list-aws" :
+                "staging-todo-list-aws"
 
-echo "Base URL detected: ${baseUrl}"
-	
-echo "Base URL detected: ${baseUrl}"
+            def baseUrl = sh(
+                script: "aws cloudformation describe-stacks --stack-name ${stackName} --query \"Stacks[0].Outputs[?OutputKey=='BaseUrlApi'].OutputValue\" --output text",
+                returnStdout: true
+            ).trim()
 
-sh """
-    export BASE_URL=${baseUrl}
-    pytest test/integration/todoApiTest.py -k "get or list" -v
-"""
+            echo "Base URL detected: ${baseUrl}"
 
-			
+            sh """
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install pytest requests
+
+                export BASE_URL=${baseUrl}
+
+                pytest test/integration/todoApiTest.py -k "get or list" -v
+            """
         }
-		}
-	}
+    }
+}
+		
 			
     }
 }
